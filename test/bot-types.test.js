@@ -33,6 +33,36 @@ test('续费类型的季度变量跨年正确', async () => {
   const messages = await type.plan({ config, schedule: { key: 'plan-1' }, occurrence: occurrenceInfo(Date.parse('2026-12-31T10:00:00+08:00'), 'Asia/Shanghai') });
   assert.deepEqual(messages, [{ chatId: '-100', chatName: '群', label: 'A', text: '2026Q4→2027Q1 2026-12-31 群 A 2026-Q4' }]);
 });
+test('续费类型的服务周期变量', async () => {
+  const type = botTypes.get('renewal');
+  const render = async (periodStart, at, periodMonths = 3) => {
+    const config = validateFields(type.fields, { plans: [{ id: 'plan-1', name: 'A', cron: '0 10 1 2,5,8,11 *', period_start: periodStart, period_months: periodMonths, template: '{period}|{next_period}', chats: [{ name: '群', chatId: '-100' }] }] });
+    type.validate(config);
+    const [message] = await type.plan({ config, schedule: { key: 'plan-1' }, occurrence: occurrenceInfo(Date.parse(at), 'Asia/Shanghai') });
+    return message.text;
+  };
+  assert.equal(await render('2026-11-09', '2027-02-01T10:00:00+08:00'), '2026-11-09 至 2027-02-09|2027-02-09 至 2027-05-09');
+  // 起始日之后的通知同样往回推算到所在的一期
+  assert.equal(await render('2026-11-09', '2026-11-01T10:00:00+08:00'), '2026-08-09 至 2026-11-09|2026-11-09 至 2027-02-09');
+  // 跨多年、从任意一期起算结果相同
+  assert.equal(await render('2028-02-09', '2027-02-01T10:00:00+08:00'), '2026-11-09 至 2027-02-09|2027-02-09 至 2027-05-09');
+  // 结束日当天按机器人时区算，已属于下一期（UTC 还是 02-08）
+  assert.equal(await render('2026-11-09', '2027-02-08T16:30:00Z'), '2027-02-09 至 2027-05-09|2027-05-09 至 2027-08-09');
+  // 月末起算不漂移：2 月取最后一天，5 月回到 30 日
+  assert.equal(await render('2026-11-30', '2027-02-01T10:00:00+08:00'), '2026-11-30 至 2027-02-28|2027-02-28 至 2027-05-30');
+  assert.equal(await render('2026-01-15', '2026-07-20T10:00:00+08:00', 6), '2026-07-15 至 2027-01-15|2027-01-15 至 2027-07-15');
+});
+test('服务周期：没填起始日不能用周期变量，日期和月数要有效', () => {
+  const type = botTypes.get('renewal');
+  const check = plan => type.validate(validateFields(type.fields, { plans: [{ id: 'plan-1', name: 'A', cron: '0 10 * * *', template: 'x', chats: [], ...plan }] }));
+  check({});
+  for (const template of ['{period}', '{next_period}', '{period_start}', '{next_period_end}']) assert.throws(() => check({ template }), /服务周期起始日/);
+  assert.throws(() => check({ period_start: '2026-02-30' }), /有效日期/);
+  assert.throws(() => check({ period_start: '11/09' }), /有效日期/);
+  assert.throws(() => check({ period_start: '2026-11-09', period_months: 0 }), /每期月数/);
+  // 老配置没有这两个字段时，月数取默认值
+  assert.equal(validateFields(type.fields, { plans: [{ name: 'A', cron: '0 10 * * *', template: 'x' }] }).plans[0].period_months, 3);
+});
 test('字段校验：未知变量、错误 cron、错误群 ID、永不触发都被拒绝', () => {
   const type = botTypes.get('renewal');
   const base = { id: 'plan-1', name: 'A', cron: '0 10 * * *', template: 'x', chats: [] };

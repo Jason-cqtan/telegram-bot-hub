@@ -2,8 +2,8 @@ import { randomBytes } from 'node:crypto';
 import { nextAfter, parseCron } from './cron.js';
 
 // 机器人类型用字段声明配置，后台表单和服务端校验都由这份声明生成，新增类型不用写前端。
-// 字段类型：text | textarea | number | boolean | select | cron | chats | list
-export const FIELD_TYPES = ['text', 'textarea', 'number', 'boolean', 'select', 'cron', 'chats', 'list'];
+// 字段类型：text | textarea | number | boolean | select | date | cron | chats | list
+export const FIELD_TYPES = ['text', 'textarea', 'number', 'boolean', 'select', 'date', 'cron', 'chats', 'list'];
 const CHAT_ID = /^-?[1-9]\d*$/;
 
 export function validateFields(fields, input, where = '') {
@@ -34,6 +34,12 @@ function validateField(field, value, name) {
     case 'select': {
       if (missing && !field.required) return field.default ?? '';
       if (!field.options.some(option => option.value === value)) throw new Error(`${name}的选项无效`);
+      return value;
+    }
+    case 'date': {
+      if (missing) { if (field.required) throw new Error(`${name}不能为空`); return ''; }
+      const date = typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T00:00:00Z`) : null;
+      if (!date || Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) throw new Error(`${name}必须是有效日期，例如 2026-11-09`);
       return value;
     }
     case 'cron': {

@@ -181,7 +181,7 @@ function buildFields(fields, value, timeZone) {
       if (field.type === 'textarea') { input = el('textarea'); input.rows = field.rows || 5; input.value = current ?? field.default ?? ''; }
       else if (field.type === 'select') { input = el('select'); field.options.forEach(option => input.append(new Option(option.label, option.value))); input.value = current ?? field.default ?? ''; }
       else if (field.type === 'boolean') { input = el('input'); input.type = 'checkbox'; input.checked = current ?? field.default ?? false; node.className = 'switch-label'; }
-      else { input = el('input'); input.type = field.type === 'number' ? 'number' : 'text'; input.value = current ?? field.default ?? ''; if (field.min !== undefined) input.min = field.min; if (field.max !== undefined) input.max = field.max; }
+      else { input = el('input'); input.type = field.type === 'number' || field.type === 'date' ? field.type : 'text'; input.value = current ?? field.default ?? ''; if (field.min !== undefined) input.min = field.min; if (field.max !== undefined) input.max = field.max; }
       if (field.required && field.type !== 'boolean') input.required = true;
       if (field.maxLength) input.maxLength = field.maxLength;
       if (field.placeholder) input.placeholder = field.placeholder;

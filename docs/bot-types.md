@@ -71,6 +71,7 @@ export default {
 | `number` | 数字 | `required` `min` `max` `default` |
 | `boolean` | true/false | `default` |
 | `select` | 选项值 | `options: [{ value, label }]` |
+| `date` | `YYYY-MM-DD` 字符串 | `required` `help` |
 | `cron` | cron 表达式 | `required` `default`。自带常用选项、中文含义和接下来 5 次时间 |
 | `chats` | `[{ name, chatId }]` | `maxItems` |
 | `list` | 对象数组 | `fields` `itemLabel` `minItems` `maxItems`。`keyed: true` 时每项带稳定的 `id`，适合做 `schedule.key` |
@@ -79,7 +80,7 @@ export default {
 
 ## 复用
 
-`_plans.js` 封装了最常见的形态（若干计划，每个一个 cron、一份模板、若干目标）：`planField`、`newPlan`、`planSchedules`、`planTargets`、`planMessages`、`validatePlanTemplates`。`renewal.js` 和 `scheduled-message.js` 都建立在它上面，只相差模板变量。
+`_plans.js` 封装了最常见的形态（若干计划，每个一个 cron、一份模板、若干目标）：`planField`、`newPlan`、`planSchedules`、`planTargets`、`planMessages`、`validatePlanTemplates`。`renewal.js` 和 `scheduled-message.js` 都建立在它上面，主要相差模板变量。要给每个计划加配置，用 `planField` 的 `extraFields`，模板变量函数的第二个参数就是当前计划（`renewal.js` 的服务周期就是这样做的）。
 
 ## 当前的边界
 
