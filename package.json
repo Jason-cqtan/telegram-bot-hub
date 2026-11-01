@@ -1,19 +1,14 @@
 {
-  "name": "telegram-quarterly-renewal-bot",
-  "version": "2.0.0",
+  "name": "telegram-bot-hub",
+  "version": "3.0.0",
   "private": true,
   "type": "module",
-  "description": "北京时间自然季度末私人群续费通知",
+  "description": "统一管理多个 Telegram 机器人的后台：可扩展的机器人类型、cron 调度与配置向导",
   "engines": { "node": ">=24 <25" },
   "scripts": {
     "start": "node --env-file-if-exists=.env src/cli.js start",
     "setup-key": "node --env-file-if-exists=.env src/cli.js setup-key",
-    "worker": "node --env-file-if-exists=.env src/cli.js worker",
-    "check": "node --env-file-if-exists=.env src/cli.js check",
-    "discover": "node --env-file-if-exists=.env src/cli.js discover",
-    "dry-run": "node --env-file-if-exists=.env src/cli.js dry-run",
     "status": "node --env-file-if-exists=.env src/cli.js status",
-    "resolve": "node --env-file-if-exists=.env src/cli.js resolve",
     "health": "node --env-file-if-exists=.env src/cli.js health",
     "test": "node --test"
   }

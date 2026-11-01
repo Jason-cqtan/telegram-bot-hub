@@ -16,14 +16,20 @@ test('允许可发言成员、管理员和可发言的受限成员', async () =>
     assert.equal((await clientFor(chat, member).assertCanSend('-100')).chatId, '-100');
   }
 });
-test('拒绝禁言、退群、被踢、无权限、频道与群 ID 不符', async () => {
+test('拒绝禁言、退群、被踢、无权限与群 ID 不符', async () => {
   const chat = { id: -100, type: 'supergroup', permissions: { can_send_messages: false } };
   for (const status of ['member', 'left', 'kicked', 'restricted', 'unknown']) {
     await assert.rejects(clientFor(chat, { status }).assertCanSend('-100'), /permission_denied/);
   }
-  await assert.rejects(clientFor({ ...chat, type: 'channel' }, { status: 'administrator' }).assertCanSend('-100'), /wrong_chat/);
   await assert.rejects(clientFor(chat, { status: 'administrator' }).assertCanSend('-200'), /wrong_chat/);
   await assert.rejects(clientFor({ ...chat, permissions: undefined }, { status: 'member' }).assertCanSend('-100'), /permission_denied/);
+});
+test('频道要求管理员且有发布权限；个人聊天只要 getChat 成功', async () => {
+  const channel = { id: -100, type: 'channel' };
+  assert.equal((await clientFor(channel, { status: 'administrator', can_post_messages: true }).assertCanSend('-100')).status, 'administrator');
+  await assert.rejects(clientFor(channel, { status: 'administrator', can_post_messages: false }).assertCanSend('-100'), /permission_denied/);
+  await assert.rejects(clientFor(channel, { status: 'member' }).assertCanSend('-100'), /permission_denied/);
+  assert.equal((await clientFor({ id: 42, type: 'private', first_name: 'x' }, null).assertCanSend('42')).status, 'private');
 });
 test('429 解析 retry_after，错误中不泄露 token', async () => {
   const token = '123456:secretsecretsecretsecretsecret';

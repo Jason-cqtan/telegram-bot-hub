@@ -17,7 +17,7 @@ export class TelegramClient {
     let response;
     let body;
     try {
-      response = await this.fetchImpl(`https://api.telegram.org/bot${this.token}/${method}`, {
+      response = await this.fetchImpl(`${process.env.TELEGRAM_API_BASE || 'https://api.telegram.org'}/bot${this.token}/${method}`, {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify(payload), signal: AbortSignal.timeout(this.timeoutMs), redirect: 'error',
       });
@@ -37,8 +37,14 @@ export class TelegramClient {
     const me = await this.call('getMe');
     if (!me?.is_bot || !Number.isSafeInteger(me.id)) throw new TelegramError('invalid_response');
     const chat = await this.call('getChat', { chat_id: chatId });
-    if (!['group', 'supergroup'].includes(chat?.type) || String(chat.id) !== chatId) throw new TelegramError('wrong_chat');
+    if (!['group', 'supergroup', 'channel', 'private'].includes(chat?.type) || String(chat.id) !== chatId) throw new TelegramError('wrong_chat');
+    // 个人聊天没有成员权限可查；对方未点过“开始”时 getChat 已经失败。
+    if (chat.type === 'private') return { botId: me.id, chatId, title: chat.first_name, status: 'private' };
     const member = await this.call('getChatMember', { chat_id: chatId, user_id: me.id });
+    if (chat.type === 'channel') {
+      if (member?.status !== 'creator' && !(member?.status === 'administrator' && member.can_post_messages === true)) throw new TelegramError('permission_denied');
+      return { botId: me.id, chatId, title: chat.title, status: member.status };
+    }
     const privileged = ['creator', 'administrator'].includes(member?.status);
     const normal = member?.status === 'member' && chat.permissions?.can_send_messages === true;
     const restricted = member?.status === 'restricted' && member.is_member === true && member.can_send_messages === true;

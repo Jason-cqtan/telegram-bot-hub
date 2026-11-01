@@ -1,0 +1,4 @@
+#!/bin/sh
+# VPS 上的管理命令：tg-bot-hub setup-key | status | health
+cd /opt/telegram-bot-hub/app || exit 1
+exec runuser -u tgbot -- env DATA_DIR=/var/lib/telegram-bot-hub /opt/telegram-bot-hub/node/bin/node src/cli.js "$@"

@@ -78,7 +78,7 @@ export class Auth {
     return { token, csrf, expires };
   }
   lookup(cookie = '') {
-    const token = /(?:^|;\s*)renewal_session=([A-Za-z0-9_-]{43})(?:;|$)/.exec(cookie)?.[1];
+    const token = /(?:^|;\s*)hub_session=([A-Za-z0-9_-]{43})(?:;|$)/.exec(cookie)?.[1];
     if (!token) return null;
     return this.db.prepare('SELECT token_hash,csrf,expires FROM sessions WHERE token_hash=? AND expires>?')
       .get(digest(token).toString('hex'), this.now()) || null;

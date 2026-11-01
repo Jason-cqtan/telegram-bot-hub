@@ -2,50 +2,64 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>续费日历 · Telegram 管理后台</title>
+  <title>Bot Hub · Telegram 机器人管理</title>
   <link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script>
 </head>
 <body>
   <div id="toast" role="status" aria-live="polite" hidden></div>
   <section id="auth-view" class="auth-wrap" hidden>
-    <div class="auth-intro"><div class="brand"><span class="brand-mark">↗</span> 续费日历</div><div class="eyebrow">TELEGRAM RENEWAL</div><h1>把每季度的提醒，<br>交给日历。</h1><p>群组、模板与发送记录，集中管理。<br>每年 3 / 6 / 9 / 12 月，季末最后一天 10:00。</p><div class="auth-rule"><span class="dot"></span> 北京时间 · 自然季度 · 持久化防重</div></div>
+    <div class="auth-intro"><div class="brand"><span class="brand-mark">↗</span> Bot Hub</div><div class="eyebrow">TELEGRAM BOT CONSOLE</div><h1>多个机器人，<br>一个后台管理。</h1><p>每个机器人选一种类型，<br>用 cron 决定什么时候执行。</p><div class="auth-rule"><span class="dot"></span> 可扩展类型 · cron 调度 · 持久化防重</div></div>
     <form id="auth-form" class="auth-card">
-      <span class="eyebrow" id="auth-kicker">WELCOME BACK</span><h2 id="auth-title">登录管理后台</h2><p class="muted" id="auth-description">继续管理你的季度续费提醒。</p>
+      <span class="eyebrow" id="auth-kicker">WELCOME BACK</span><h2 id="auth-title">登录管理后台</h2><p class="muted" id="auth-description">继续管理你的机器人。</p>
       <label id="setup-key-label" hidden>初始化口令<input id="setup-key" autocomplete="off" placeholder="粘贴首次启动时获取的一次性口令"></label>
       <label>管理员用户名<input id="username" autocomplete="username" value="admin" minlength="3" maxlength="32" required></label>
       <label>密码<input id="password" type="password" autocomplete="current-password" maxlength="128" required placeholder="输入管理员密码"></label>
       <p id="auth-error" class="form-error" role="alert"></p><button class="primary" type="submit" id="auth-submit">登录后台 →</button>
-      <p class="small muted" id="setup-help" hidden>首次部署：在项目目录运行<br><code>docker compose exec bot node src/cli.js setup-key</code><br>复制输出的口令，在此创建管理员。密码至少 12 位。</p>
+      <p class="small muted" id="setup-help" hidden>首次部署：在 VPS 上运行<br><code>tg-bot-hub setup-key</code><br>复制输出的口令，在此创建管理员。密码至少 12 位。</p>
     </form>
   </section>
   <div id="workspace" hidden>
-    <aside class="sidebar"><div class="brand"><span class="brand-mark">↗</span> 续费日历</div><div class="sidebar-caption">工作空间 / TELEGRAM</div><nav aria-label="主导航"><button class="nav active" data-page="overview"><span>▦</span> 总览</button><button class="nav" data-page="settings"><span>⚙</span> 群组与设置</button><button class="nav" data-page="history"><span>◷</span> 发送记录</button><button class="nav" data-page="security"><span>◇</span> 账户安全</button></nav><div class="sidebar-bottom"><div class="time-zone"><span class="dot"></span> Asia/Shanghai<span>北京时间 UTC+8</span></div><button id="logout" class="ghost">退出登录 ↗</button></div></aside>
+    <aside class="sidebar"><div class="brand"><span class="brand-mark">↗</span> Bot Hub</div><div class="sidebar-caption">工作空间 / TELEGRAM</div><nav aria-label="主导航"><a class="nav" href="#/overview" data-nav="overview"><span>▦</span> 总览</a><a class="nav" href="#/bots" data-nav="bots"><span>◉</span> 机器人</a><a class="nav" href="#/jobs" data-nav="jobs"><span>◷</span> 发送记录</a><a class="nav" href="#/help" data-nav="help"><span>?</span> 使用指南</a><a class="nav" href="#/security" data-nav="security"><span>◇</span> 账户安全</a></nav><div class="sidebar-bottom"><button id="logout" class="ghost">退出登录 ↗</button></div></aside>
     <main>
-      <header class="topbar"><span id="breadcrumb">工作空间 / 总览</span><div><span class="user-avatar">J</span><span id="current-user">管理员</span></div></header>
+      <header class="topbar"><span id="breadcrumb">工作空间</span><div><span class="user-avatar">A</span><span id="current-user">管理员</span></div></header>
       <section id="page-overview" class="page">
-        <div class="page-head"><div><div class="eyebrow">YOUR QUARTER, ON SCHEDULE</div><h1>每一次续费，都准时提醒。</h1><p class="muted">在这里查看任务状态，安排下一个季度。</p></div><button class="secondary" id="refresh">↻ 刷新数据</button></div>
-        <div class="schedule-banner"><div><span class="banner-label">NEXT REMINDER / 下次提醒</span><h2 id="next-date">—</h2><p>季末最后一天，向 A / B 类群依次发送通知</p></div><div class="schedule-clock"><strong>10:00</strong><span>北京时间 · UTC+8</span></div></div>
-        <div id="onboarding" class="notice" hidden>开始使用：前往「群组与设置」，填写 Token、添加群组并保存，检查权限后开启自动通知。</div>
-        <div class="metrics"><article><span>自动通知</span><strong id="service-state">已暂停</strong><small id="service-description">可在设置中启用</small></article><article><span>管理群组</span><strong id="group-count">0</strong><small>A / B 类私人群</small></article><article><span>发送成功</span><strong id="sent-count">0</strong><small>包含人工确认记录</small></article><article><span>需要处理</span><strong id="attention-count">0</strong><small>失败或结果待核查</small></article></div>
-        <div class="section-title"><div><h2>最近的发送记录</h2><p class="muted">发送结果会保留，重启后继续防重。</p></div><button class="text-button" data-go="history">查看全部 →</button></div><div id="recent-jobs" class="panel"></div>
+        <div class="page-head"><div><div class="eyebrow">ALL BOTS, ONE VIEW</div><h1>总览</h1><p class="muted">所有机器人的运行状态和接下来要做的事。</p></div><button class="secondary" id="refresh">↻ 刷新数据</button></div>
+        <div id="onboarding" class="notice" hidden>还没有机器人。去「机器人」新建一个，向导会一步步告诉你要在 Telegram 里设置什么。</div>
+        <div class="metrics"><article><span>运行中</span><strong id="metric-running">0</strong><small id="metric-total">共 0 个机器人</small></article><article><span>下次执行</span><strong id="metric-next" class="metric-text">—</strong><small id="metric-next-bot">暂无计划</small></article><article><span>发送成功</span><strong id="metric-sent">0</strong><small>包含人工确认记录</small></article><article><span>需要处理</span><strong id="metric-attention">0</strong><small>失败或结果待核查</small></article></div>
+        <div class="section-title"><h2>机器人</h2><a class="text-button" href="#/bots">管理 →</a></div><div id="overview-bots" class="bot-grid"></div>
+        <div class="section-title"><h2>最近的发送记录</h2><a class="text-button" href="#/jobs">查看全部 →</a></div><div id="recent-jobs" class="panel"></div>
         <div class="section-title"><h2>最近活动</h2></div><div id="events" class="panel activity"></div>
       </section>
-      <section id="page-settings" class="page" hidden>
-        <div class="page-head"><div><div class="eyebrow">MAKE IT YOURS</div><h1>群组与设置</h1><p class="muted">保存后自动生效，无需编辑文件或重启。</p></div><span class="save-indicator" id="save-indicator">修改前请先暂停自动通知</span></div>
-        <form id="settings-form">
-          <div class="panel settings-panel"><div class="setting-heading"><div><h2>自动通知</h2><p class="muted">按固定季度日历发送。已经进入发送阶段的请求可能继续完成。</p></div><label class="switch-label"><input type="checkbox" id="enabled"> 启用发送</label></div><div class="fixed-rule">3 月 31 日 · 6 月 30 日 · 9 月 30 日 · 12 月 31 日 <strong>10:00 北京时间</strong></div></div>
-          <div class="panel settings-panel"><div class="setting-heading"><div><h2>连接机器人</h2><p class="muted">从 Telegram 的 @BotFather 获取 Token；保存后仅显示配置状态。</p></div><span class="pill" id="token-state">未配置</span></div><label>机器人 Token<input id="bot-token" type="password" autocomplete="off" placeholder="粘贴 BotFather 提供的 Token；已保存时留空保持不变"></label><div class="button-row"><button type="button" class="secondary" id="check-permissions">检查连接与群权限</button><button type="button" class="ghost" id="discover-groups">发现机器人所在群</button></div><div id="check-results" class="result-box" hidden></div><div id="discovered" class="result-box" hidden></div></div>
-          <div class="classes"><div class="panel settings-panel"><div class="setting-heading"><div><span class="class-tag">A</span><h2>A 类群组</h2></div><button type="button" class="text-button" data-add="A">＋ 添加群</button></div><div id="groups-A" class="group-list"></div><label>通知模板<textarea id="template-A" rows="7" maxlength="4096" required></textarea></label><p class="small muted">支持 {group_name}、{year}、{quarter}、{next_year}、{next_quarter}、{due_date}、{class}、{quarter_key}</p></div><div class="panel settings-panel"><div class="setting-heading"><div><span class="class-tag blue">B</span><h2>B 类群组</h2></div><button type="button" class="text-button" data-add="B">＋ 添加群</button></div><div id="groups-B" class="group-list"></div><label>通知模板<textarea id="template-B" rows="7" maxlength="4096" required></textarea></label><p class="small muted">纯文本发送，支持换行。暂不用的类别可以不添加群组。</p></div></div>
-          <details class="panel settings-panel"><summary>补发与重试设置</summary><div class="advanced-grid"><label>停机补发窗口（小时）<input type="number" id="catchUpHours" min="1" max="168" required></label><label>最多尝试次数<input type="number" id="maxAttempts" min="1" max="20" required></label><label>初次重试等待（秒）<input type="number" id="retryBaseSeconds" min="1" max="3600" required></label><label>重试等待上限（秒）<input type="number" id="retryMaxSeconds" min="1" max="86400" required></label><label>请求超时（秒）<input type="number" id="timeoutSeconds" min="1" max="60" required></label><label>日历检查间隔（秒）<input type="number" id="pollSeconds" min="1" max="60" required></label></div><p class="small muted">发送结果未知时不会自动重发，请在发送记录中人工核查。修改补发窗口只影响新任务。</p></details>
-          <div class="save-bar"><span id="settings-error" class="form-error" role="alert"></span><button type="button" class="secondary" id="preview">预览消息</button><button type="submit" class="primary" id="save-settings">保存设置</button></div>
-        </form>
+      <section id="page-bots" class="page" hidden>
+        <div class="page-head"><div><div class="eyebrow">YOUR BOTS</div><h1>机器人</h1><p class="muted">一个 Telegram 机器人（一个 Token）对应这里一条记录。</p></div><button class="primary" id="new-bot">＋ 新建机器人</button></div>
+        <div id="bot-list" class="bot-grid"></div>
       </section>
-      <section id="page-history" class="page" hidden><div class="page-head"><div><div class="eyebrow">EVERY MESSAGE, ACCOUNTED FOR</div><h1>发送记录</h1><p class="muted">最近 200 条任务。时间均显示为北京时间。</p></div><label class="filter-label">筛选状态<select id="history-filter"><option value="all">全部状态</option><option value="attention">需要处理</option><option value="sent">发送成功</option><option value="pending">等待发送</option><option value="skipped">已跳过</option></select></label></div><div class="notice">结果待核查的任务可能已送达。请先查看 Telegram 群内记录，再选择确认成功或重新尝试。</div><div id="all-jobs" class="panel"></div></section>
+      <section id="page-bot" class="page" hidden>
+        <div class="page-head"><div><div class="eyebrow" id="bot-type-label">BOT</div><h1 id="bot-title">机器人</h1><p class="muted" id="bot-subtitle"></p></div><div class="head-actions"><span class="pill" id="bot-state">已暂停</span><button class="secondary" id="bot-toggle">启用</button></div></div>
+        <div class="tabs" role="tablist"><a class="tab" data-tab="guide">配置向导</a><a class="tab" data-tab="settings">参数设置</a><a class="tab" data-tab="jobs">发送记录</a></div>
+        <div id="tab-guide" class="tab-panel"><div id="guide-progress" class="guide-progress"></div><ol id="guide-steps" class="guide-steps"></ol></div>
+        <div id="tab-settings" class="tab-panel" hidden>
+          <form id="bot-form">
+            <div class="panel settings-panel"><h2>基本信息</h2><div class="field-grid"><label>名称<input id="bot-name" maxlength="64" required></label><label>时区<input id="bot-timezone" list="time-zones" required placeholder="Asia/Shanghai"><datalist id="time-zones"><option value="Asia/Shanghai"><option value="Asia/Hong_Kong"><option value="Asia/Tokyo"><option value="Asia/Singapore"><option value="Europe/London"><option value="America/New_York"><option value="America/Los_Angeles"><option value="UTC"></datalist><small class="field-help">cron 和模板里的日期都按这个时区计算。</small></label></div>
+              <label>机器人 Token<input id="bot-token" type="password" autocomplete="off" placeholder="粘贴 @BotFather 给的 Token；已保存时留空保持不变"><small class="field-help" id="token-help"></small></label></div>
+            <div id="type-fields"></div>
+            <details class="panel settings-panel"><summary>补发与重试设置</summary><div id="option-fields" class="advanced-grid"></div><p class="small muted">发送结果未知时不会自动重发，需要在发送记录里人工核查。</p></details>
+            <div class="danger-row"><button type="button" class="text-button danger" id="delete-bot">删除这个机器人</button></div>
+            <div class="save-bar"><span id="bot-error" class="form-error" role="alert"></span><span id="save-indicator" class="save-indicator"></span><button type="button" class="secondary" id="preview">预览消息</button><button type="submit" class="primary" id="save-bot">保存设置</button></div>
+          </form>
+        </div>
+        <div id="tab-jobs" class="tab-panel" hidden><div id="bot-jobs" class="panel"></div></div>
+      </section>
+      <section id="page-jobs" class="page" hidden><div class="page-head"><div><div class="eyebrow">EVERY MESSAGE, ACCOUNTED FOR</div><h1>发送记录</h1><p class="muted">最近 200 条任务，时间按你浏览器所在时区显示。</p></div><label class="filter-label">筛选状态<select id="history-filter"><option value="all">全部状态</option><option value="attention">需要处理</option><option value="sent">发送成功</option><option value="pending">等待发送</option><option value="skipped">已跳过</option></select></label></div><div class="notice">结果待核查的任务可能已送达。请先查看 Telegram 里的记录，再选择确认成功或重新尝试。</div><div id="all-jobs" class="panel"></div></section>
+      <section id="page-help" class="page" hidden><div class="page-head"><div><div class="eyebrow">HOW IT WORKS</div><h1>使用指南</h1><p class="muted">需要配置什么、去哪里配置。每个机器人的「配置向导」里还有逐步清单。</p></div></div><div id="help-content"></div></section>
       <section id="page-security" class="page" hidden><div class="page-head"><div><div class="eyebrow">ACCOUNT & ACCESS</div><h1>账户安全</h1><p class="muted">修改密码后，所有已登录会话都会退出。</p></div></div><form id="password-form" class="panel settings-panel narrow"><h2>修改管理员密码</h2><label>当前密码<input id="current-password" type="password" autocomplete="current-password" maxlength="128" required></label><label>新密码<input id="new-password" type="password" autocomplete="new-password" minlength="12" maxlength="128" placeholder="至少 12 个字符" required></label><label>确认新密码<input id="repeat-password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label><button class="primary" type="submit">更新密码并退出</button><p id="password-error" class="form-error" role="alert"></p></form></section>
-      <footer>续费日历 <span>·</span> 所有提醒按北京时间安排 <span>·</span> v2.0</footer>
+      <footer>Bot Hub <span>·</span> v3.0</footer>
     </main>
   </div>
-  <dialog id="preview-dialog"><div class="dialog-head"><h2>消息预览</h2><button type="button" class="ghost" id="close-preview">关闭 ✕</button></div><p class="muted">仅预览当前表单，不会保存或向 Telegram 发送消息。</p><div id="preview-content"></div></dialog>
-  <dialog id="resolve-dialog"><form id="resolve-form"><h2>处理发送任务</h2><p id="resolve-description"></p><label>处理方式<select id="resolve-decision"><option value="sent">已在群内确认收到，标记成功</option><option value="retry">确认未收到，允许再次尝试</option><option value="skipped">本次跳过，不再发送</option></select></label><label class="ack"><input id="resolve-ack" type="checkbox"> 我已核查群内记录，并理解重试可能产生重复消息。</label><p id="resolve-error" class="form-error" role="alert"></p><div class="button-row"><button type="button" class="secondary" id="cancel-resolve">取消</button><button type="submit" class="primary">确认处理</button></div></form></dialog>
+  <dialog id="new-bot-dialog"><form id="new-bot-form"><h2>新建机器人</h2><p class="muted">类型决定这个机器人做什么，创建后不能更改。</p><label>名称<input id="new-bot-name" maxlength="64" required placeholder="例如：合租续费"></label><div class="field-label">类型</div><div id="new-bot-types" class="type-choices"></div><p id="new-bot-error" class="form-error" role="alert"></p><div class="button-row"><button type="button" class="secondary" id="cancel-new-bot">取消</button><button type="submit" class="primary">创建并打开向导</button></div></form></dialog>
+  <dialog id="preview-dialog"><div class="dialog-head"><h2>消息预览</h2><button type="button" class="ghost" id="close-preview">关闭 ✕</button></div><p class="muted">按当前表单和下次执行时间渲染，不会保存或发送。</p><div id="preview-content"></div></dialog>
+  <dialog id="discover-dialog"><div class="dialog-head"><h2>发现到的群和频道</h2><button type="button" class="ghost" id="close-discover">关闭 ✕</button></div><p class="muted" id="discover-hint"></p><div id="discover-content"></div></dialog>
+  <dialog id="test-dialog"><form id="test-form"><h2>发送测试消息</h2><p class="muted">会真实发送一条带【测试】前缀的消息，不计入发送记录。</p><label>发送到<select id="test-target"></select></label><p id="test-error" class="form-error" role="alert"></p><div class="button-row"><button type="button" class="secondary" id="cancel-test">取消</button><button type="submit" class="primary">发送</button></div></form></dialog>
+  <dialog id="resolve-dialog"><form id="resolve-form"><h2>处理发送任务</h2><p id="resolve-description"></p><label>处理方式<select id="resolve-decision"><option value="sent">已确认收到，标记成功</option><option value="retry">确认未收到，允许再次尝试</option><option value="skipped">本次跳过，不再发送</option></select></label><label class="ack"><input id="resolve-ack" type="checkbox"> 我已核查 Telegram 里的记录，并理解重试可能产生重复消息。</label><p id="resolve-error" class="form-error" role="alert"></p><div class="button-row"><button type="button" class="secondary" id="cancel-resolve">取消</button><button type="submit" class="primary">确认处理</button></div></form></dialog>
 </body>
 </html>

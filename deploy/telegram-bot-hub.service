@@ -1,0 +1,41 @@
+[Unit]
+Description=Telegram Bot Hub: multi-bot admin console and scheduler
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=tgbot
+Group=tgbot
+WorkingDirectory=/opt/telegram-bot-hub/app
+Environment=NODE_ENV=production
+Environment=DATA_DIR=/var/lib/telegram-bot-hub
+Environment=ADMIN_HOST=127.0.0.1
+Environment=ADMIN_PORT=8090
+Environment=COOKIE_SECURE=true
+Environment=TRUST_PROXY=true
+ExecStart=/opt/telegram-bot-hub/node/bin/node --max-old-space-size=96 src/cli.js start
+Restart=on-failure
+RestartSec=5
+# 等发送中的请求结束；被强杀的任务会进入“结果待核查”
+TimeoutStopSec=60
+# 这台 1 vCPU、1 GB 的 VPS 还跑着别的服务
+MemoryMax=192M
+Nice=10
+StateDirectory=telegram-bot-hub
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

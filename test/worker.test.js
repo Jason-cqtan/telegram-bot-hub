@@ -6,20 +6,22 @@ import { join } from 'node:path';
 import { Store } from '../src/store.js';
 import { Worker } from '../src/worker.js';
 import { TelegramError } from '../src/telegram.js';
-import { quarterInfo } from '../src/schedule.js';
 
+const DUE = Date.parse('2026-12-31T10:00:00+08:00');
+const OCCURRENCE = '2026-12-31T10:00';
 function fixture(t, overrides = {}) {
-  const dir = mkdtempSync(join(tmpdir(), 'renewal-test-'));
+  const dir = mkdtempSync(join(tmpdir(), 'hub-test-'));
   const path = join(dir, 'state.sqlite');
   const store = new Store(path);
+  store.db.prepare(`INSERT INTO bots (id,name,type,token,enabled,time_zone,options,config,created_at,updated_at)
+    VALUES (1,'测试','renewal','t',1,'Asia/Shanghai','{}','{}',0,0)`).run();
   const stores = [store];
   t.after(() => { for (const s of stores) { try { s.close(); } catch {} } rmSync(dir, { recursive: true, force: true }); });
-  let now = quarterInfo(2026, 4).due;
+  let now = DUE;
   let sends = 0;
   const config = {
-    groups: [{ category: 'A', chatId: '-100', name: 'A群', template: '续费 {quarter_key}' },
-      { category: 'B', chatId: '-200', name: 'B群', template: 'B续费 {next_quarter}' }],
-    catchUpHours: 72, maxAttempts: 3, retryBaseMs: 1000, retryMaxMs: 4000, timeoutMs: 1000,
+    groups: [{ label: 'A', chatId: '-100' }, { label: 'B', chatId: '-200' }],
+    catchUpHours: 72, maxAttempts: 3, retryBaseMs: 1000, retryMaxMs: 4000,
   };
   const telegram = {
     assertCanSend: async () => {},
@@ -28,12 +30,21 @@ function fixture(t, overrides = {}) {
   };
   const logs = [];
   const logger = Object.fromEntries(['info', 'warn', 'error'].map(key => [key, (event, data) => logs.push({ event, ...data })]));
-  const worker = new Worker({ config, store, telegram, logger, now: () => now, random: () => 0 });
+  const worker = new Worker({ store, logger, now: () => now, random: () => 0, leaseMs: 5000,
+    runtime: () => ({ telegram, retryBaseMs: config.retryBaseMs, retryMaxMs: config.retryMaxMs }) });
+  // 模拟调度器：入队（幂等）后做一次维护。
+  worker.prepare = () => {
+    for (const group of config.groups) {
+      worker.store.enqueue({ botId: 1, scheduleKey: 'plan', occurrence: OCCURRENCE, chatId: group.chatId, label: group.label,
+        text: group.text ?? `通知 ${group.label}`, dueAt: DUE, deadline: DUE + config.catchUpHours * 3600000, maxAttempts: config.maxAttempts }, now);
+    }
+    worker.store.maintain(now, job => config.groups.some(group => group.chatId === job.chat_id));
+  };
   return { store, path, config, telegram, worker, logs, stores,
     sends: () => sends, time: () => now, advance: ms => { now += ms; } };
 }
 
-test('A/B 独立发送，反复轮询不重复，重新打开 SQLite 后仍防重', async t => {
+test('多个目标独立发送，反复轮询不重复，重新打开 SQLite 后仍防重', async t => {
   const f = fixture(t);
   f.worker.prepare();
   assert.equal(await f.worker.processOne(), true);
@@ -103,7 +114,7 @@ test('发送前网络错误指数退避，到最大尝试次数后停止', async
   assert.equal(await f.worker.processOne(), false);
   assert.equal(f.sends(), 0);
 });
-test('同一数据库的两个连接原子领取，同一群跨类别不能重复建单', t => {
+test('同一数据库的两个连接原子领取，同一时间点同一目标不能重复建单', t => {
   const f = fixture(t);
   f.config.groups = f.config.groups.slice(0, 1);
   f.worker.prepare();
@@ -111,8 +122,7 @@ test('同一数据库的两个连接原子领取，同一群跨类别不能重�
   const claimed = f.store.claim(f.time(), 1000);
   assert.ok(claimed);
   assert.equal(other.claim(f.time(), 1000), undefined);
-  const q = quarterInfo(2026, 4);
-  assert.equal(other.enqueue(q, { category: 'B', chatId: '-100' }, 'changed', 72, f.time()), 0);
+  assert.equal(other.enqueue({ botId: 1, scheduleKey: 'plan', occurrence: OCCURRENCE, chatId: '-100', label: 'B', text: 'changed', dueAt: DUE, deadline: DUE + 1000, maxAttempts: 3 }, f.time()), 0);
   assert.equal(other.list().length, 1);
 });
 test('checking 崩溃安全回收；过期租约的旧 worker 不能再发送', t => {
@@ -156,9 +166,9 @@ test('成功发送后的写库失败不会触发自动重发', async t => {
 });
 test('过期任务与移除目标被跳过，任务正文保持入队快照', async t => {
   const f = fixture(t); f.worker.prepare();
-  f.config.groups[0].template = 'changed';
+  f.config.groups[0].text = 'changed'; f.worker.prepare();
   const text = f.store.db.prepare('SELECT text FROM jobs WHERE id=1').get().text;
-  assert.equal(text, '续费 2026-Q4');
+  assert.equal(text, '通知 A');
   f.config.groups = f.config.groups.slice(0, 1); f.worker.prepare();
   assert.equal(f.store.list().find(j => j.id === 2).last_error, 'target_removed');
   f.advance(72 * 3600000); f.worker.prepare();
@@ -195,4 +205,16 @@ test('人工核查可确认已发送或允许重试，保留审计记录并禁�
   assert.throws(() => f.store.resolve(2, 'retry', f.time()), /已过期/);
   f.store.resolve(2, 'skipped', f.time());
   assert.equal(f.store.db.prepare('SELECT COUNT(*) AS n FROM resolutions').get().n, 3);
+});
+test('暂停的机器人不领取任务，恢复后继续；机器人被删时任务跳过', async t => {
+  const f = fixture(t); f.config.groups = f.config.groups.slice(0, 1); f.worker.prepare();
+  f.store.db.exec('UPDATE bots SET enabled=0');
+  assert.equal(await f.worker.processOne(), false);
+  assert.equal(f.store.hasReady(f.time()), false);
+  f.store.db.exec('UPDATE bots SET enabled=1');
+  f.worker.runtime = () => null;
+  assert.equal(await f.worker.processOne(), true);
+  assert.equal(f.store.list()[0].status, 'skipped');
+  assert.equal(f.store.list()[0].last_error, 'bot_deleted');
+  assert.equal(f.sends(), 0);
 });
