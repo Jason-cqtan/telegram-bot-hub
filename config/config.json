@@ -1,0 +1,16 @@
+{
+  "classes": {
+    "A": {
+      "template": "【A类合租续费通知】\n各位好，{year} 年第 {quarter} 季度即将结束。请准备续费第 {next_quarter} 季度（{next_year} 年）的合租订阅。\n请按群内约定联系管理员办理，谢谢！\n通知日期：{due_date}",
+      "groups": [
+        { "name": "A类合租群", "chatId": "${A_CHAT_ID}" }
+      ]
+    },
+    "B": {
+      "template": "【B类合租续费通知】\n{group_name} 的朋友们，{year} 年第 {quarter} 季度即将结束，请及时续费下季度订阅。\n续费方式及金额请查看群公告或联系管理员。\n通知日期：{due_date}",
+      "groups": [
+        { "name": "B类合租群", "chatId": "${B_CHAT_ID}" }
+      ]
+    }
+  }
+}

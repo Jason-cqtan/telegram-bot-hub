@@ -1,0 +1,8 @@
+.env
+data/
+node_modules/
+*.sqlite*
+*.tar.gz
+*.zip
+coverage/
+.DS_Store
