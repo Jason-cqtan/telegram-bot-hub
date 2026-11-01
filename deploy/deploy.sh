@@ -34,7 +34,7 @@ if [ "\$(/opt/telegram-bot-hub/node/bin/node --version 2>/dev/null || true)" != 
 fi
 REMOTE
 
-rsync -az --delete --chmod=D755,F644 --exclude '.git' --exclude '.claude' --exclude 'data' --exclude 'node_modules' ./ "$SSH_TARGET:/opt/telegram-bot-hub/app/"
+rsync -az --delete --chmod=u=rwX,go=rX --exclude '.git' --exclude '.claude' --exclude 'data' --exclude 'node_modules' ./ "$SSH_TARGET:/opt/telegram-bot-hub/app/"
 
 ssh "$SSH_TARGET" 'bash -s' <<REMOTE
 set -euo pipefail
@@ -64,8 +64,8 @@ CADDY
   fi
 fi
 
-for _ in 1 2 3 4 5 6 7 8 9 10; do
-  curl -fsS -o /dev/null http://127.0.0.1:8090/ && break
+for _ in \$(seq 1 20); do
+  curl -fs -o /dev/null http://127.0.0.1:8090/ && break
   sleep 1
 done
 curl -fsS -o /dev/null http://127.0.0.1:8090/
