@@ -53,7 +53,7 @@ export class Scheduler {
           config: bot.config, schedule, occurrence, telegram: this.clientFor(bot), logger: this.logger, preview: false });
         for (const message of messages) {
           const inserted = this.store.enqueue({ botId: bot.id, scheduleKey: schedule.key, occurrence: occurrence.key, chatId: String(message.chatId),
-            label: message.label ?? schedule.label, text: message.text, dueAt: latest, deadline: latest + windowMs, maxAttempts: bot.options.maxAttempts }, now);
+            label: message.label ?? schedule.label, text: message.text, dueAt: latest, deadline: latest + windowMs, maxAttempts: bot.options.maxAttempts, pin: message.pin === true }, now);
           if (inserted) this.logger.info('job_created', { botId: bot.id, occurrence: occurrence.key, chatId: String(message.chatId) });
         }
         if (skipped) this.logger.warn('occurrences_skipped', { botId: bot.id, schedule: schedule.label, skipped });

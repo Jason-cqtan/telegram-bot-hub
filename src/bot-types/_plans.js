@@ -12,6 +12,7 @@ export function planField({ itemLabel, templateHelp, defaultCron, defaultTemplat
       { key: 'cron', label: '执行时间', type: 'cron', required: true, default: defaultCron },
       ...extraFields,
       { key: 'template', label: '消息内容', type: 'textarea', required: true, maxLength: 4096, rows: 7, help: templateHelp, default: defaultTemplate },
+      { key: 'pin', label: '发送后置顶', type: 'boolean', help: '消息发出后自动置顶，不额外通知群成员，也不取消之前的置顶。机器人要是管理员并有「置顶消息」权限（频道是「编辑消息」）。置顶失败不影响发送，也不会重发。' },
       { key: 'chats', label: '发送到', type: 'chats', maxItems: 100 },
     ],
   };
@@ -20,7 +21,7 @@ export function planField({ itemLabel, templateHelp, defaultCron, defaultTemplat
 export const newPlan = (name, cron, template) => ({ id: randomBytes(6).toString('base64url'), name, cron, template, chats: [] });
 
 export const planSchedules = config => config.plans.map(plan => ({ key: plan.id, label: plan.name, cron: plan.cron }));
-export const planTargets = config => config.plans.flatMap(plan => plan.chats);
+export const planTargets = config => config.plans.flatMap(plan => plan.chats.map(chat => (plan.pin ? { ...chat, pin: true } : chat)));
 
 export function planMessages({ schedule, occurrence, config }, variables) {
   const plan = config.plans.find(item => item.id === schedule.key);
@@ -28,6 +29,7 @@ export function planMessages({ schedule, occurrence, config }, variables) {
   return plan.chats.map(chat => ({
     chatId: chat.chatId, chatName: chat.name, label: plan.name,
     text: renderTemplate(plan.template, { ...variables(occurrence, plan), plan_name: plan.name, group_name: chat.name }),
+    ...(plan.pin ? { pin: true } : {}),
   }));
 }
 

@@ -61,6 +61,16 @@ export class Worker {
     // 成功回执后的数据库错误不能进入发送重试分支；保留 sending 供人工核查。
     this.store.finish(job, 'sent', this.now(), { messageId: result.message_id });
     this.logger.info('job_sent', { jobId: job.id, botId: job.bot_id, occurrence: job.occurrence, chatId: job.chat_id, messageId: result.message_id });
+    if (job.pin) await this.pin(job, context, result.message_id);
     return true;
+  }
+  // 消息已经送达并记为成功，置顶失败不能影响任务状态，也不能触发重发。
+  async pin(job, context, messageId) {
+    try {
+      await context.telegram.pin(job.chat_id, messageId);
+      this.logger.info('job_pinned', { jobId: job.id, botId: job.bot_id, chatId: job.chat_id, messageId });
+    } catch (error) {
+      this.logger.error('job_pin_failed', { jobId: job.id, botId: job.bot_id, chatId: job.chat_id, messageId, error: `${error.kind || 'internal'}${error.code == null ? '' : `:${error.code}`}` });
+    }
   }
 }

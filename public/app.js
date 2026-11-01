@@ -8,7 +8,7 @@ let dirty = false;
 let resolvingId = null;
 let route = { page: 'overview' };
 const statuses = { pending: '等待发送', checking: '检查权限', sending: '正在发送', sent: '发送成功', failed: '发送失败', uncertain: '结果待核查', skipped: '已跳过' };
-const events = { admin_started: '管理后台已启动', admin_created: '管理员已创建', admin_login: '管理员登录', bot_created: '新建了机器人', bot_saved: '更新了机器人配置', bot_deleted: '删除了机器人', bot_enabled: '启用了机器人', bot_paused: '暂停了机器人', bot_checked: '检查了发送权限', test_sent: '发送了测试消息', job_created: '创建发送任务', job_sent: '消息发送成功', job_retry: '等待重试发送', job_failed: '任务发送失败', job_uncertain: '发送结果需要核查', manual_resolution: '人工处理了发送任务', admin_password_changed: '管理员密码已更新', schedule_failed: '计划执行失败', occurrences_skipped: '停机期间跳过了较早的时间点', loop_error: '后台循环出错', service_stopped: '服务已停止' };
+const events = { admin_started: '管理后台已启动', admin_created: '管理员已创建', admin_login: '管理员登录', bot_created: '新建了机器人', bot_saved: '更新了机器人配置', bot_deleted: '删除了机器人', bot_enabled: '启用了机器人', bot_paused: '暂停了机器人', bot_checked: '检查了发送权限', test_sent: '发送了测试消息', job_created: '创建发送任务', job_sent: '消息发送成功', job_pinned: '消息已置顶', job_pin_failed: '消息已发出，但置顶失败，请检查置顶权限', job_retry: '等待重试发送', job_failed: '任务发送失败', job_uncertain: '发送结果需要核查', manual_resolution: '人工处理了发送任务', admin_password_changed: '管理员密码已更新', schedule_failed: '计划执行失败', occurrences_skipped: '停机期间跳过了较早的时间点', loop_error: '后台循环出错', service_stopped: '服务已停止' };
 const cronPresets = [['0 10 L 3,6,9,12 *', '每季度最后一天 10:00'], ['0 9 * * *', '每天 9:00'], ['0 9 * * 1-5', '工作日 9:00'], ['0 9 * * 1', '每周一 9:00'], ['0 10 1 * *', '每月 1 日 10:00'], ['0 10 L * *', '每月最后一天 10:00'], ['0 * * * *', '每小时整点']];
 const date = n => n ? new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(n)) : '—';
 function el(tag, text, className) { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; if (className) node.className = className; return node; }
@@ -271,7 +271,10 @@ async function check() {
   const box = $('check-results'); if (!box) { toast('已连接 @' + result.bot); return; }
   box.hidden = false; box.replaceChildren(el('strong', '机器人：@' + result.bot));
   if (!result.results.length) box.append(el('p', 'Token 正常。添加发送目标后可继续检查权限。'));
-  for (const row of result.results) box.append(el('p', (row.ok ? '✓ ' : '! ') + row.name + '：' + (row.ok ? '可以发送' : row.error), row.ok ? 'good-text' : 'bad-text'));
+  for (const row of result.results) {
+    const passed = row.ok && !row.warning;
+    box.append(el('p', (passed ? '✓ ' : '! ') + row.name + '：' + (row.warning || (row.ok ? '可以发送' : row.error)), passed ? 'good-text' : 'bad-text'));
+  }
 }
 async function discover() {
   const result = await api(`bots/${currentBot.id}/discover`, 'POST', {});

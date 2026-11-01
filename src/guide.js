@@ -45,6 +45,16 @@ export function botGuide(bot, type, targets) {
     status: targets.length ? '已配置' : '待配置', items: [type.guide.body],
     note: '执行时间支持 cron 表达式，输入框下方会实时显示含义和接下来 5 次触发时间，时区在同一页设置。',
   });
+  if (targets.some(target => target.pin)) steps.push({
+    id: 'pin', title: '给机器人置顶权限', optional: true, done: false,
+    status: '有计划开启了发送后置顶',
+    items: [
+      '群：打开群 → 点群名称 → 编辑（或管理员）→ 添加管理员 → 选择机器人 → 打开「置顶消息」。',
+      '频道：打开频道 → 频道信息 → 管理员 → 选择机器人 → 打开「编辑消息」。',
+      '设置好后点下一步的「检查」，结果里会提示哪些目标还不能置顶。',
+    ],
+    note: '置顶会在群里留下一条系统提示，但不会通知群成员。之前的置顶不会被取消，需要时在 Telegram 里手动取消。',
+  });
   steps.push(
     {
       id: 'check', title: '检查连接与发送权限', done: bot.checked,
@@ -115,6 +125,7 @@ export const HELP = [
       '发现不到群：Telegram 只保留 24 小时内的更新。在群里发一条 /start@机器人用户名，再点发现。',
       '提示机器人被其他服务占用：这个 Token 设置过 webhook，或别的程序正在用它收消息。建议给本后台单独建一个机器人。',
       '提示没有发送权限：群里开了全员禁言，或频道没给「发布消息」权限。把机器人设为管理员后重新检查。',
+      '活动记录提示置顶失败：消息已经发出，不会重发。给机器人打开置顶权限（群是「置顶消息」，频道是「编辑消息」），这一条在 Telegram 里手动置顶，下次就会自动置顶。',
       '想新增机器人类型：在 src/bot-types/ 加一个文件并重新部署，后台会自动出现这个类型和它的配置表单，写法见仓库 docs/bot-types.md。',
     ],
   },

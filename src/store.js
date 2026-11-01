@@ -54,6 +54,7 @@ export class Store {
         message_id INTEGER,
         last_error TEXT,
         updated_at INTEGER NOT NULL,
+        pin INTEGER NOT NULL DEFAULT 0,
         UNIQUE (bot_id, schedule_key, occurrence, chat_id)
       );
       CREATE INDEX IF NOT EXISTS jobs_ready ON jobs(status, next_attempt);
@@ -63,13 +64,17 @@ export class Store {
       );
       CREATE TABLE IF NOT EXISTS app_events (id INTEGER PRIMARY KEY, at INTEGER NOT NULL, value TEXT NOT NULL);
     `);
+    // 旧数据库的 jobs 表没有 pin 列。
+    if (!this.db.prepare('PRAGMA table_info(jobs)').all().some(column => column.name === 'pin')) {
+      this.db.exec('ALTER TABLE jobs ADD COLUMN pin INTEGER NOT NULL DEFAULT 0');
+    }
   }
   close() { this.db.close(); }
   enqueue(job, now) {
     return this.db.prepare(`INSERT OR IGNORE INTO jobs
-      (bot_id, schedule_key, occurrence, chat_id, label, text, due_at, deadline, max_attempts, next_attempt, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(job.botId, job.scheduleKey, job.occurrence, job.chatId, job.label,
-      job.text, job.dueAt, job.deadline, job.maxAttempts, now, now).changes;
+      (bot_id, schedule_key, occurrence, chat_id, label, text, due_at, deadline, max_attempts, next_attempt, updated_at, pin)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(job.botId, job.scheduleKey, job.occurrence, job.chatId, job.label,
+      job.text, job.dueAt, job.deadline, job.maxAttempts, now, now, job.pin ? 1 : 0).changes;
   }
   // isAllowed(job) 判断任务目标是否仍在机器人配置里。
   maintain(now, isAllowed = () => true) {

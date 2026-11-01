@@ -39,20 +39,24 @@ export class TelegramClient {
     const chat = await this.call('getChat', { chat_id: chatId });
     if (!['group', 'supergroup', 'channel', 'private'].includes(chat?.type) || String(chat.id) !== chatId) throw new TelegramError('wrong_chat');
     // 个人聊天没有成员权限可查；对方未点过“开始”时 getChat 已经失败。
-    if (chat.type === 'private') return { botId: me.id, chatId, title: chat.first_name, status: 'private' };
+    if (chat.type === 'private') return { botId: me.id, chatId, title: chat.first_name, status: 'private', canPin: true };
     const member = await this.call('getChatMember', { chat_id: chatId, user_id: me.id });
     if (chat.type === 'channel') {
       if (member?.status !== 'creator' && !(member?.status === 'administrator' && member.can_post_messages === true)) throw new TelegramError('permission_denied');
-      return { botId: me.id, chatId, title: chat.title, status: member.status };
+      return { botId: me.id, chatId, title: chat.title, status: member.status, canPin: member.status === 'creator' || member.can_edit_messages === true };
     }
     const privileged = ['creator', 'administrator'].includes(member?.status);
     const normal = member?.status === 'member' && chat.permissions?.can_send_messages === true;
     const restricted = member?.status === 'restricted' && member.is_member === true && member.can_send_messages === true;
     if (!privileged && !normal && !restricted) throw new TelegramError('permission_denied');
-    return { botId: me.id, chatId, title: chat.title, status: member.status };
+    return { botId: me.id, chatId, title: chat.title, status: member.status, canPin: member.status === 'creator' || (member.status === 'administrator' && member.can_pin_messages === true) };
   }
   send(chatId, text) {
     return this.call('sendMessage', { chat_id: chatId, text, link_preview_options: { is_disabled: true } });
+  }
+  // 消息本身已经提醒过一次，置顶不再通知全员。
+  pin(chatId, messageId) {
+    return this.call('pinChatMessage', { chat_id: chatId, message_id: messageId, disable_notification: true });
   }
 }
 

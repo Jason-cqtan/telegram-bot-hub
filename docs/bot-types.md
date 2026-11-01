@@ -43,8 +43,8 @@ export default {
 | `fields` | 配置表单的声明，见下表 |
 | `defaults()` | 新建时的默认配置 |
 | `schedules(config)` | 返回 `[{ key, label, cron }]`。`key` 要稳定，它是防重键的一部分 |
-| `targets(config)` | 返回 `[{ chatId, name }]`。权限检查和测试消息用它；任务的目标不在这里时，等待中的任务会被跳过 |
-| `plan(context)` | 到点时调用，返回要发的消息 `[{ chatId, chatName?, label?, text }]`，可以是 async |
+| `targets(config)` | 返回 `[{ chatId, name, pin? }]`，`pin: true` 时权限检查会多查置顶权限。权限检查和测试消息用它；任务的目标不在这里时，等待中的任务会被跳过 |
+| `plan(context)` | 到点时调用，返回要发的消息 `[{ chatId, chatName?, label?, text, pin? }]`，可以是 async。`pin: true` 表示发送后置顶 |
 | `validate(config)` | 可选。保存时做额外校验，抛错即拒绝保存，错误文字会显示给用户 |
 | `guide` | 可选。`{ title, body }`，插入配置向导的类型专属步骤 |
 

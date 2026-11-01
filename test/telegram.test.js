@@ -31,6 +31,26 @@ test('频道要求管理员且有发布权限；个人聊天只要 getChat 成�
   await assert.rejects(clientFor(channel, { status: 'member' }).assertCanSend('-100'), /permission_denied/);
   assert.equal((await clientFor({ id: 42, type: 'private', first_name: 'x' }, null).assertCanSend('42')).status, 'private');
 });
+test('置顶权限：群看置顶消息，频道看编辑消息，个人聊天总是可以', async () => {
+  const group = { id: -100, type: 'supergroup', permissions: { can_send_messages: true } };
+  const channel = { id: -100, type: 'channel' };
+  const canPin = async (chat, member) => (await clientFor(chat, member).assertCanSend(String(chat.id))).canPin;
+  assert.equal(await canPin(group, { status: 'administrator', can_pin_messages: true }), true);
+  assert.equal(await canPin(group, { status: 'administrator', can_pin_messages: false }), false);
+  assert.equal(await canPin(group, { status: 'member' }), false);
+  assert.equal(await canPin(channel, { status: 'administrator', can_post_messages: true, can_edit_messages: true }), true);
+  assert.equal(await canPin(channel, { status: 'administrator', can_post_messages: true, can_pin_messages: true }), false);
+  assert.equal(await canPin({ id: 42, type: 'private', first_name: 'x' }, null), true);
+});
+test('置顶请求不通知群成员', async () => {
+  let call;
+  const client = new TelegramClient('test', 1000, async (url, options) => {
+    call = { method: url.split('/').at(-1), body: JSON.parse(options.body) };
+    return { ok: true, json: async () => ({ ok: true, result: true }) };
+  });
+  await client.pin('-100', 7);
+  assert.deepEqual(call, { method: 'pinChatMessage', body: { chat_id: '-100', message_id: 7, disable_notification: true } });
+});
 test('429 解析 retry_after，错误中不泄露 token', async () => {
   const token = '123456:secretsecretsecretsecretsecret';
   const client = new TelegramClient(token, 1000, async () => ({

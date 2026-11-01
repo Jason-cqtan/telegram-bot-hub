@@ -110,7 +110,11 @@ export function createAdminServer({ store, bots, scheduler, types, dataDir, logg
         const me = await telegram.call('getMe');
         const results = [];
         for (const target of bots.targets(bot)) {
-          try { await telegram.assertCanSend(target.chatId); results.push({ name: target.name, chatId: target.chatId, ok: true }); }
+          // 缺置顶权限只提示，不算检查失败：消息照样能发出去。
+          try {
+            const access = await telegram.assertCanSend(target.chatId);
+            results.push({ name: target.name, chatId: target.chatId, ok: true, ...(target.pin && !access?.canPin ? { warning: '可以发送，但不能置顶。请把机器人设为管理员并打开「置顶消息」权限（频道是「编辑消息」）' } : {}) });
+          }
           catch (error) { results.push({ name: target.name, chatId: target.chatId, ok: false, error: friendlyTelegram(error) }); }
         }
         bots.recordCheck(id, me.username ?? null, results.length > 0 && results.every(row => row.ok));

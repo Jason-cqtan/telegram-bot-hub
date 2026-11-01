@@ -218,3 +218,43 @@ test('暂停的机器人不领取任务，恢复后继续；机器人被删时�
   assert.equal(f.store.list()[0].last_error, 'bot_deleted');
   assert.equal(f.sends(), 0);
 });
+
+test('开启置顶时发送成功后置顶一次，用的是这条消息的 ID', async t => {
+  const pins = [];
+  const f = fixture(t, { pin: async (chatId, messageId) => { pins.push([chatId, messageId]); } });
+  f.store.enqueue({ botId: 1, scheduleKey: 'plan', occurrence: OCCURRENCE, chatId: '-100', label: 'A', text: 'x', dueAt: DUE, deadline: DUE + 1000, maxAttempts: 3, pin: true }, f.time());
+  f.store.enqueue({ botId: 1, scheduleKey: 'plan', occurrence: OCCURRENCE, chatId: '-200', label: 'B', text: 'y', dueAt: DUE, deadline: DUE + 1000, maxAttempts: 3 }, f.time());
+  await f.worker.processOne();
+  await f.worker.processOne();
+  assert.equal(await f.worker.processOne(), false);
+  assert.deepEqual(pins, [['-100', 1]]);
+  assert.deepEqual(f.store.list().map(j => j.status), ['sent', 'sent']);
+});
+test('置顶失败时任务仍是发送成功，不重发、不计入待处理，并写入活动记录', async t => {
+  const f = fixture(t, { pin: async () => { throw new TelegramError('api', 400); } });
+  f.store.enqueue({ botId: 1, scheduleKey: 'plan', occurrence: OCCURRENCE, chatId: '-100', label: 'A', text: 'x', dueAt: DUE, deadline: DUE + 1000, maxAttempts: 3, pin: true }, f.time());
+  assert.equal(await f.worker.processOne(), true);
+  assert.equal(await f.worker.processOne(), false);
+  assert.equal(f.sends(), 1);
+  assert.equal(f.store.list()[0].status, 'sent');
+  assert.equal(f.store.needsAttention(), 0);
+  assert.equal(f.logs.find(log => log.event === 'job_pin_failed').error, 'api:400');
+});
+test('发送失败时不置顶', async t => {
+  let pinned = false;
+  const f = fixture(t, { send: async () => { throw new TelegramError('api', 403); }, pin: async () => { pinned = true; } });
+  f.store.enqueue({ botId: 1, scheduleKey: 'plan', occurrence: OCCURRENCE, chatId: '-100', label: 'A', text: 'x', dueAt: DUE, deadline: DUE + 1000, maxAttempts: 3, pin: true }, f.time());
+  await f.worker.processOne();
+  assert.equal(f.store.list()[0].status, 'failed');
+  assert.equal(pinned, false);
+});
+test('旧数据库打开时自动补上 pin 列，已有任务默认不置顶', async t => {
+  const f = fixture(t);
+  f.worker.prepare();
+  f.store.db.exec('ALTER TABLE jobs DROP COLUMN pin');
+  f.store.close();
+  const reopened = new Store(f.path); f.stores.push(reopened);
+  f.worker.store = reopened;
+  const job = reopened.claim(f.time(), 5000);
+  assert.equal(job.pin, 0);
+});

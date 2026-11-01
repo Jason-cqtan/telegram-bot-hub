@@ -63,6 +63,15 @@ test('服务周期：没填起始日不能用周期变量，日期和月数要�
   // 老配置没有这两个字段时，月数取默认值
   assert.equal(validateFields(type.fields, { plans: [{ name: 'A', cron: '0 10 * * *', template: 'x' }] }).plans[0].period_months, 3);
 });
+test('发送后置顶按计划生效，默认关闭', async () => {
+  const type = botTypes.get('scheduled-message');
+  const chats = [{ name: '群', chatId: '-100' }];
+  const config = validateFields(type.fields, { plans: [{ id: 'plan-1', name: 'A', cron: '0 10 * * *', template: 'x', pin: true, chats }, { id: 'plan-2', name: 'B', cron: '0 10 * * *', template: 'y', chats: [{ name: '群2', chatId: '-200' }] }] });
+  const plan = key => type.plan({ config, schedule: { key }, occurrence: occurrenceInfo(Date.now(), 'Asia/Shanghai') });
+  assert.equal((await plan('plan-1'))[0].pin, true);
+  assert.equal((await plan('plan-2'))[0].pin, undefined);
+  assert.deepEqual(type.targets(config).map(target => target.pin), [true, undefined]);
+});
 test('字段校验：未知变量、错误 cron、错误群 ID、永不触发都被拒绝', () => {
   const type = botTypes.get('renewal');
   const base = { id: 'plan-1', name: 'A', cron: '0 10 * * *', template: 'x', chats: [] };
