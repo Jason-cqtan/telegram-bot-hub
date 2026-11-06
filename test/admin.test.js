@@ -71,9 +71,9 @@ async function fixture(t, { secureCookie = false, trustProxy = false } = {}) {
 test('接口要求登录、同源来源与 CSRF；安全响应头存在', async t => {
   const f = await fixture(t); await f.setup();
   const index = await f.request('/');
-  assert.match(index.response.headers.get('content-security-policy'), /frame-ancestors 'none'/);
+  assert.match(index.response.headers.get('content-security-policy'), /frame-ancestors 'self'/);
   assert.equal(index.response.headers.get('cache-control'), 'no-store');
-  assert.equal(index.response.headers.get('x-frame-options'), 'DENY');
+  assert.equal(index.response.headers.get('x-frame-options'), 'SAMEORIGIN');
   assert.match(index.value, /Bot Hub/);
   assert.equal((await f.request('/api/bots', 'POST', {}, { Origin: 'https://evil.example' })).response.status, 403);
   assert.equal((await f.request('/api/bots', 'POST', {}, { 'X-CSRF-Token': '' })).response.status, 403);

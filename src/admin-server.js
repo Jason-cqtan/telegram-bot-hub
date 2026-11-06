@@ -135,8 +135,9 @@ export function createAdminServer({ store, bots, scheduler, types, dataDir, logg
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'no-referrer');
-    res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+    // framed only by the mdyrbz.com admin page, which serves this app at /admin/bot/
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'self'; base-uri 'none'; form-action 'self'");
     if (secureCookie) res.setHeader('Strict-Transport-Security', 'max-age=31536000');
     function json(value, status = 200) {
       res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });

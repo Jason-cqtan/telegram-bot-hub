@@ -16,7 +16,8 @@ function toast(message) { $('toast').textContent = message; $('toast').hidden = 
 async function api(path, method = 'GET', data) {
   const headers = {};
   if (method !== 'GET') { headers['Content-Type'] = 'application/json'; headers['X-CSRF-Token'] = csrf; }
-  const result = await fetch('/api/' + path, { method, headers, credentials: 'same-origin', body: data === undefined ? undefined : JSON.stringify(data) });
+  // relative: the app is served at bot.mdyrbz.com/ and at mdyrbz.com/admin/bot/
+  const result = await fetch('api/' + path, { method, headers, credentials: 'same-origin', body: data === undefined ? undefined : JSON.stringify(data) });
   const value = await result.json();
   if (!result.ok) {
     if (result.status === 401 && !['login', 'setup'].includes(path)) await boot();
